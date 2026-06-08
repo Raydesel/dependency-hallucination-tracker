@@ -1,0 +1,179 @@
+{
+  "uid": "deptracker-main",
+  "title": "Dependency Hallucination Tracker",
+  "tags": ["deptracker"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "annotations": { "list": [] },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Observations",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "deptracker-pg" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS value FROM dependency_observations;",
+          "datasource": { "type": "postgres", "uid": "deptracker-pg" }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Distinct Packages",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "deptracker-pg" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS value FROM packages;",
+          "datasource": { "type": "postgres", "uid": "deptracker-pg" }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Not In Registry",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "deptracker-pg" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "red", "value": 1 }
+          ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS value FROM dependency_observations WHERE flags @> '[\"NOT_IN_REGISTRY\"]';",
+          "datasource": { "type": "postgres", "uid": "deptracker-pg" }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Flagged Observations",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "deptracker-pg" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 1 }
+          ] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS value FROM dependency_observations WHERE suspicion_score > 0;",
+          "datasource": { "type": "postgres", "uid": "deptracker-pg" }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Observations Over Time by Ecosystem",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "deptracker-pg" },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(validated_at, $__interval), ecosystem AS metric, COUNT(*) AS value FROM dependency_observations WHERE $__timeFilter(validated_at) GROUP BY 1, ecosystem ORDER BY 1;",
+          "datasource": { "type": "postgres", "uid": "deptracker-pg" }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "piechart",
+      "title": "Suspicion Flag Distribution",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "deptracker-pg" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "NOT_IN_REGISTRY" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
+          { "matcher": { "id": "byName", "options": "TYPOSQUAT_CANDIDATE" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] },
+          { "matcher": { "id": "byName", "options": "RECENTLY_PUBLISHED" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }] },
+          { "matcher": { "id": "byName", "options": "NOT_PUBLISHABLE:STDLIB" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }] },
+          { "matcher": { "id": "byName", "options": "NOT_PUBLISHABLE:IMPORT_PATH" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "purple" } }] },
+          { "matcher": { "id": "byName", "options": "NOT_PUBLISHABLE:INTERNAL" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] }
+        ]
+      },
+      "options": {
+        "reduceOptions": { "values": true, "calcs": [], "fields": "/^count$/" },
+        "legend": { "showLegend": true, "placement": "right", "values": ["value", "percent"] },
+        "pieType": "pie"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT CASE WHEN flag LIKE 'TYPOSQUAT_CANDIDATE:%' THEN 'TYPOSQUAT_CANDIDATE' ELSE flag END AS flag, COUNT(*) AS count FROM dependency_observations, jsonb_array_elements_text(flags) AS flag GROUP BY 1 ORDER BY 2 DESC;",
+          "datasource": { "type": "postgres", "uid": "deptracker-pg" }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top Referenced Packages",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 13 },
+      "datasource": { "type": "postgres", "uid": "deptracker-pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT package_name, ecosystem, observation_count, exists_in_reg FROM packages ORDER BY observation_count DESC LIMIT 25;",
+          "datasource": { "type": "postgres", "uid": "deptracker-pg" }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Flagged Packages",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 13 },
+      "datasource": { "type": "postgres", "uid": "deptracker-pg" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT d.package_name, d.ecosystem, MAX(d.suspicion_score) AS max_suspicion, COUNT(DISTINCT d.id) AS observation_count, string_agg(DISTINCT flag_text, ', ') AS flags FROM dependency_observations d CROSS JOIN LATERAL jsonb_array_elements_text(d.flags) AS flag_text WHERE d.suspicion_score > 0 GROUP BY d.package_name, d.ecosystem ORDER BY max_suspicion DESC, observation_count DESC LIMIT 25;",
+          "datasource": { "type": "postgres", "uid": "deptracker-pg" }
+        }
+      ]
+    }
+  ]
+}

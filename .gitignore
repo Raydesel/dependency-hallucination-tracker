@@ -1,0 +1,15 @@
+# Secrets & local config
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Pipeline runtime artifacts
+logs/
+.run/
+
+# OS
+.DS_Store
